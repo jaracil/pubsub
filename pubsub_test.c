@@ -16,57 +16,50 @@ int ctx1=0;
 int ctx2=0;
 int ctx3=0;
 
-void msg_cb(handle_t *h, const msg_t *msg){
-	(*(int*)(h->ctx))++;
-	if (h->ctx == &ctx1 && ctx1 == 1){
+void msg_cb(void *ctx, const msg_t *msg){
+	(*(int*)(ctx))++;
+	if (ctx == &ctx1 && ctx1 == 1){
 		assert(strcmp(msg->buf,"sota") == 0);
 		return;
 	}
-	if (h->ctx == &ctx1 && ctx1 == 2){
+	if (ctx == &ctx2 && ctx2 == 1){
 		assert(strcmp(msg->buf,"caballo") == 0);
 		return;
 	}
-	if (h->ctx == &ctx1 && ctx1 == 3){
+	if (ctx == &ctx3 && ctx3 == 1){
 		assert(strcmp(msg->buf,"rey") == 0);
 		return;
 	}
-	if (h->ctx == &ctx2 && ctx2 == 1){
-		assert(strcmp(msg->buf,"sota") == 0);
+	if (ctx == &ctx3 && ctx3 == 2){
+		assert(strcmp(msg->buf,"as") == 0);
 		return;
 	}
-	if (h->ctx == &ctx2 && ctx2 == 2){
-		assert(strcmp(msg->buf,"caballo") == 0);
-		return;
-	}
-	if (h->ctx == &ctx3 && ctx3 == 1){
-		assert(strcmp(msg->buf,"sota") == 0);
-		return;
-	}
+
 	printf("Invalid stat ctx1:%d ctx2:%d ctx3:%d\r\n",ctx1, ctx2, ctx3);
 	assert(false);
 }
 
+void sub_unsub(int sub){
+	pubsub_sub_unsub(sub, "a", &msg_cb, &ctx1);
+	pubsub_sub_unsub(sub, "a.b", &msg_cb, &ctx2);
+	pubsub_sub_unsub(sub, "a.b.c", &msg_cb, &ctx3);
+}
+
 void pubsub_test(){
-	handle_t h1 = {.cb = &msg_cb, .ctx = &ctx1};
-	handle_t h2 = {.cb = &msg_cb, .ctx = &ctx2};
-	handle_t h3 = {.cb = &msg_cb, .ctx = &ctx3};
 
-	assert(pubsub_subscribe("a", &h1) == 0);
-	assert(pubsub_subscribe("a.b", &h2) == 0);
-	assert(pubsub_subscribe("a.b.c", &h3) == 0);
+	sub_unsub(1);
 
-	assert(pubsub_publish_str("a.b.c", "sota") == 3);
-	assert(pubsub_publish_str("a.b", "caballo") == 2);
-	assert(pubsub_publish_str("a", "rey") == 1);
+	assert(pubsub_publish_str("a", "sota") == 1);
+	assert(pubsub_publish_str("a.b", "caballo") == 1);
+	assert(pubsub_publish_str("a.b.c", "rey") == 1);
+	assert(pubsub_publish_str("a.b.c", "as") == 1);
+	assert(pubsub_publish_str("a.b.c.d", "comodin") == 0);
 
-	assert(ctx1 == 3);
-	assert(ctx2 == 2);
-	assert(ctx3 == 1);
+	assert(ctx1 == 1);
+	assert(ctx2 == 1);
+	assert(ctx3 == 2);
 
-	assert(pubsub_unsubscribe("a", &h1) == 0);
-	assert(pubsub_unsubscribe("a.b", &h2) == 0);
-	assert(pubsub_unsubscribe("a.b.c", &h3) == 0);
-
+	sub_unsub(0);
 }
 
 int main(int argc, char* argv[]){

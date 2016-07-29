@@ -12,46 +12,60 @@
 #include "pubsub.h"
 
 
+typedef struct handle_list_s {
+	msg_callback_t cb;
+	void *ctx;
+	struct handle_list_s *prev;
+	struct handle_list_s *next;
+} handle_list_t;
+
+typedef struct topic_map_s {
+	char *topic;
+	handle_list_t *handles;
+	UT_hash_handle hh;
+} topic_map_t;
+
 static topic_map_t *Topics = NULL;
 
+static char* _strdup(const char* src){
+	size_t len = strlen(src) + 1;
+	return memcpy(malloc(len), src, len);
+}
 
-int pubsub_subscribe(const char *topic, handle_t *handle){
+static int handle_cmp(handle_list_t *h1, handle_list_t *h2){
+	if (h1->ctx < h2->ctx) return -1;
+	if (h1->ctx > h2->ctx) return 1;
+	if (h1->cb < h2->cb) return -1;
+	if (h1->cb > h2->cb) return 1;
+	return 0;
+}
+
+int pubsub_subscribe(const char *topic, msg_callback_t cb, void *ctx){
 	topic_map_t *tm;
 	handle_list_t *hl;
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
 		tm = calloc(1, sizeof(*tm));
-		tm->topic = strdup(topic);
+		tm->topic = _strdup(topic);
 		HASH_ADD_STR( Topics, topic, tm );
 	}
 	hl = calloc(1, sizeof(*hl));
-	hl->handle = handle;
+	hl->cb = cb;
+	hl->ctx = ctx;
 	DL_APPEND(tm->handles, hl);
 	return 0;
 }
 
-int pubsub_subscribe_many(char *topics[], handle_t *handle){
-	int i;
-
-	if (topics == NULL){
-		return 0;
-	}
-	for(i = 0; topics[i] != NULL; i++) {
-		pubsub_subscribe(topics[i], handle);
-	}
-	return 0;
-}
-
-int pubsub_unsubscribe(const char *topic, handle_t *handle){
+int pubsub_unsubscribe(const char *topic, msg_callback_t cb, void *ctx){
 	topic_map_t *tm;
-	handle_list_t *hl;
+	handle_list_t *hl, like = {.cb = cb, .ctx = ctx};
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
 		return -1;
 	}
-	DL_SEARCH_SCALAR(tm->handles, hl, handle, handle);
+	DL_SEARCH(tm->handles, hl, &like, handle_cmp);
 	if (hl == NULL) {
 		return -1;
 	}
@@ -65,18 +79,12 @@ int pubsub_unsubscribe(const char *topic, handle_t *handle){
 	return 0;
 }
 
-int pubsub_unsubscribe_many(char *topics[], handle_t *handle){
-	int i;
-
-	if (topics == NULL){
-		return 0;
+int pubsub_sub_unsub(int sub, const char *topic, msg_callback_t cb, void *ctx){
+	if (sub){
+		return pubsub_subscribe(topic, cb, ctx);
 	}
-	for(i = 0; topics[i] != NULL; i++) {
-		pubsub_unsubscribe(topics[i], handle);
-	}
-	return 0;
+	return pubsub_unsubscribe(topic, cb, ctx);
 }
-
 
 size_t pubsub_count(const char *topic){
 	topic_map_t *tm;
@@ -91,38 +99,21 @@ size_t pubsub_count(const char *topic){
 	return ret;
 }
 
-static size_t _pubsub_topic_publish(const char *topic, const msg_t *msg){
+size_t pubsub_publish(const msg_t *msg){
 	topic_map_t *tm;
 	handle_list_t *hl;
 	size_t ret = 0;
 
-	HASH_FIND_STR(Topics, topic, tm);
+	HASH_FIND_STR(Topics, msg->topic, tm);
 	if (tm==NULL){
 		return 0;
 	}
 	DL_FOREACH(tm->handles, hl) {
-		hl->handle->cb(hl->handle, msg);
-		ret++;
-	}
-	return ret;
-}
-
-size_t pubsub_publish(const msg_t *msg){
-	size_t ret = 0, l;
-	char *tp = strdup(msg->topic);
-
-	while(strlen(tp) > 0) {
-		ret += _pubsub_topic_publish(tp, msg);
-		for(l = strlen(tp); l > 0; l --){
-			if (tp[l - 1] == '.'){
-				tp[l - 1] = 0;
-				break;
-			}
-			tp[l - 1] = 0;
+		if (hl->cb != NULL){
+			hl->cb(hl->ctx, msg);
+			ret++;
 		}
 	}
-	ret += _pubsub_topic_publish(".", msg); // Send message to root
-	free(tp);
 	return ret;
 }
 

@@ -31,30 +31,14 @@ typedef struct {
 	void  *buf;
 } msg_t;
 
-typedef struct handle_s handle_t;
-typedef void (*msg_callback_t)(handle_t *h, const msg_t *m);
 
-typedef struct handle_s {
-	msg_callback_t cb;
-	void *ctx;
-} handle_t;
+typedef void (*msg_callback_t)(void *c, const msg_t *m);
 
-typedef struct handle_list_s {
-	handle_t *handle;
-	struct handle_list_s *prev;
-	struct handle_list_s *next;
-} handle_list_t;
 
-typedef struct topic_map_s {
-	char *topic;
-	handle_list_t *handles;
-	UT_hash_handle hh;
-} topic_map_t;
+int pubsub_subscribe(const char *topic, msg_callback_t cb, void *ctx);
+int pubsub_unsubscribe(const char *topic, msg_callback_t cb, void *ctx);
+int pubsub_sub_unsub(int sub, const char *topic, msg_callback_t cb, void *ctx);
 
-int pubsub_subscribe(const char *topic, handle_t *handle);
-int pubsub_subscribe_many(char *topics[], handle_t *handle);
-int pubsub_unsubscribe(const char *topic, handle_t *handle);
-int pubsub_unsubscribe_many(char *topics[], handle_t *handle);
 size_t pubsub_count(const char *topic);
 size_t pubsub_publish(const msg_t *msg);
 
