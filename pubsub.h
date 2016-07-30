@@ -11,6 +11,10 @@
 #include <sys/types.h>
 #include "uthash.h"
 
+#ifndef PUBSUB_TOPIC_SIZE
+#define PUBSUB_TOPIC_SIZE 32
+#endif
+
 enum msg_types {
 	MSG_INT_TYPE,
 	MSG_DBL_TYPE,
@@ -31,16 +35,13 @@ typedef struct {
 	void  *buf;
 } msg_t;
 
-
 typedef void (*msg_callback_t)(void *c, const msg_t *m);
 
-
-int pubsub_subscribe(const char *topic, msg_callback_t cb, void *ctx);
-int pubsub_unsubscribe(const char *topic, msg_callback_t cb, void *ctx);
-int pubsub_sub_unsub(int sub, const char *topic, msg_callback_t cb, void *ctx);
-
-size_t pubsub_count(const char *topic);
+int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb);
+int pubsub_unsubscribe(const char *topic, void *ctx);
+int pubsub_unsubscribe_all(void *ctx);
 size_t pubsub_publish(const msg_t *msg);
+size_t pubsub_count(const char *topic);
 
 //Helper functions
 size_t pubsub_publish_int(char *topic, int64_t val);

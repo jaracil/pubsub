@@ -20,34 +20,21 @@ typedef struct handle_list_s {
 } handle_list_t;
 
 typedef struct topic_map_s {
-	char *topic;
+	char topic[PUBSUB_TOPIC_SIZE];
 	handle_list_t *handles;
 	UT_hash_handle hh;
 } topic_map_t;
 
 static topic_map_t *Topics = NULL;
 
-static char* _strdup(const char* src){
-	size_t len = strlen(src) + 1;
-	return memcpy(malloc(len), src, len);
-}
-
-static int handle_cmp(handle_list_t *h1, handle_list_t *h2){
-	if (h1->ctx < h2->ctx) return -1;
-	if (h1->ctx > h2->ctx) return 1;
-	if (h1->cb < h2->cb) return -1;
-	if (h1->cb > h2->cb) return 1;
-	return 0;
-}
-
-int pubsub_subscribe(const char *topic, msg_callback_t cb, void *ctx){
+int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 	topic_map_t *tm;
 	handle_list_t *hl;
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
 		tm = calloc(1, sizeof(*tm));
-		tm->topic = _strdup(topic);
+		strncpy(tm->topic, topic, PUBSUB_TOPIC_SIZE - 1);
 		HASH_ADD_STR( Topics, topic, tm );
 	}
 	hl = calloc(1, sizeof(*hl));
@@ -57,15 +44,15 @@ int pubsub_subscribe(const char *topic, msg_callback_t cb, void *ctx){
 	return 0;
 }
 
-int pubsub_unsubscribe(const char *topic, msg_callback_t cb, void *ctx){
+int pubsub_unsubscribe(const char *topic, void *ctx){
 	topic_map_t *tm;
-	handle_list_t *hl, like = {.cb = cb, .ctx = ctx};
+	handle_list_t *hl;
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
 		return -1;
 	}
-	DL_SEARCH(tm->handles, hl, &like, handle_cmp);
+	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl == NULL) {
 		return -1;
 	}
@@ -73,17 +60,21 @@ int pubsub_unsubscribe(const char *topic, msg_callback_t cb, void *ctx){
 	free(hl);
 	if (tm->handles == NULL) { //Empty list
 		HASH_DEL(Topics, tm);
-		free(tm->topic);
 		free(tm);
 	}
 	return 0;
 }
 
-int pubsub_sub_unsub(int sub, const char *topic, msg_callback_t cb, void *ctx){
-	if (sub){
-		return pubsub_subscribe(topic, cb, ctx);
+int pubsub_unsubscribe_all(void *ctx){
+	topic_map_t *tm, *tmp_tm;
+	int ret = -1;
+
+	HASH_ITER(hh, Topics, tm, tmp_tm){
+		if (pubsub_unsubscribe(tm->topic, ctx) == 0) {
+			ret = 0;
+		}
 	}
-	return pubsub_unsubscribe(topic, cb, ctx);
+	return ret;
 }
 
 size_t pubsub_count(const char *topic){

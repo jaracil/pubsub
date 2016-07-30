@@ -12,54 +12,38 @@
 #include <stdio.h>
 
 
-int ctx1=0;
-int ctx2=0;
-int ctx3=0;
+int ctx=0;
 
-void msg_cb(void *ctx, const msg_t *msg){
+void msg_cb1(void *ctx, const msg_t *msg){
 	(*(int*)(ctx))++;
-	if (ctx == &ctx1 && ctx1 == 1){
-		assert(strcmp(msg->buf,"sota") == 0);
-		return;
-	}
-	if (ctx == &ctx2 && ctx2 == 1){
-		assert(strcmp(msg->buf,"caballo") == 0);
-		return;
-	}
-	if (ctx == &ctx3 && ctx3 == 1){
-		assert(strcmp(msg->buf,"rey") == 0);
-		return;
-	}
-	if (ctx == &ctx3 && ctx3 == 2){
-		assert(strcmp(msg->buf,"as") == 0);
-		return;
-	}
-
-	printf("Invalid stat ctx1:%d ctx2:%d ctx3:%d\r\n",ctx1, ctx2, ctx3);
-	assert(false);
+	assert(strcmp(msg->buf,"sota") == 0);
 }
 
-void sub_unsub(int sub){
-	pubsub_sub_unsub(sub, "a", &msg_cb, &ctx1);
-	pubsub_sub_unsub(sub, "a.b", &msg_cb, &ctx2);
-	pubsub_sub_unsub(sub, "a.b.c", &msg_cb, &ctx3);
+void msg_cb2(void *ctx, const msg_t *msg){
+	(*(int*)(ctx))++;
+	assert(strcmp(msg->buf,"caballo") == 0);
 }
+
+void msg_cb3(void *ctx, const msg_t *msg){
+	(*(int*)(ctx))++;
+	assert(strcmp(msg->buf,"rey") == 0);
+}
+
 
 void pubsub_test(){
-
-	sub_unsub(1);
+	pubsub_subscribe("a", &ctx, &msg_cb1);
+	pubsub_subscribe("a.b", &ctx, &msg_cb2);
+	pubsub_subscribe("a.b.c", &ctx, &msg_cb3);
 
 	assert(pubsub_publish_str("a", "sota") == 1);
 	assert(pubsub_publish_str("a.b", "caballo") == 1);
 	assert(pubsub_publish_str("a.b.c", "rey") == 1);
-	assert(pubsub_publish_str("a.b.c", "as") == 1);
 	assert(pubsub_publish_str("a.b.c.d", "comodin") == 0);
 
-	assert(ctx1 == 1);
-	assert(ctx2 == 1);
-	assert(ctx3 == 2);
+	assert(ctx == 3);
 
-	sub_unsub(0);
+	assert(pubsub_unsubscribe_all(&ctx) == 0);
+	assert(pubsub_unsubscribe_all(&ctx) != 0);
 }
 
 int main(int argc, char* argv[]){
