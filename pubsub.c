@@ -37,6 +37,10 @@ int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 		strncpy(tm->topic, topic, PUBSUB_TOPIC_SIZE - 1);
 		HASH_ADD_STR( Topics, topic, tm );
 	}
+	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
+	if (hl != NULL) {
+		return -1;
+	}
 	hl = calloc(1, sizeof(*hl));
 	hl->cb = cb;
 	hl->ctx = ctx;
@@ -67,11 +71,11 @@ int pubsub_unsubscribe(const char *topic, void *ctx){
 
 int pubsub_unsubscribe_all(void *ctx){
 	topic_map_t *tm, *tmp_tm;
-	int ret = -1;
+	int ret = 0;
 
 	HASH_ITER(hh, Topics, tm, tmp_tm){
 		if (pubsub_unsubscribe(tm->topic, ctx) == 0) {
-			ret = 0;
+			ret ++;
 		}
 	}
 	return ret;
@@ -92,14 +96,14 @@ size_t pubsub_count(const char *topic){
 
 size_t pubsub_publish(const msg_t *msg){
 	topic_map_t *tm;
-	handle_list_t *hl;
+	handle_list_t *hl, *tmp_hl;
 	size_t ret = 0;
 
 	HASH_FIND_STR(Topics, msg->topic, tm);
 	if (tm==NULL){
 		return 0;
 	}
-	DL_FOREACH(tm->handles, hl) {
+	DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
 		if (hl->cb != NULL){
 			hl->cb(hl->ctx, msg);
 			ret++;
