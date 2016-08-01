@@ -27,6 +27,46 @@ typedef struct topic_map_s {
 
 static topic_map_t *Topics = NULL;
 
+static char *_strdup(const char *src){
+	int len = strlen(src) + 1;
+	return memcpy(malloc(len), src, len);
+}
+
+msg_t *pubsub_msg_clone(const msg_t* msg){
+	msg_t *m;
+
+	m = malloc(sizeof(*m));
+	m->topic = _strdup(msg->topic);
+	m->type = msg->type;
+	switch (m->type){
+	case MSG_INT_TYPE:
+		m->int_val = msg->int_val;
+		break;
+	case MSG_DBL_TYPE:
+		m->dbl_val = msg->dbl_val;
+		break;
+	case MSG_PTR_TYPE:
+		m->ptr_val = msg->ptr_val;
+		break;
+	case MSG_STR_TYPE:
+		m->str = _strdup(msg->str);
+		break;
+	case MSG_BUF_TYPE:
+		m->buf_sz = msg->buf_sz;
+		m->buf = memcpy(malloc(m->buf_sz), msg->buf, m->buf_sz);
+		break;
+	}
+	return m;
+}
+
+void pubsub_msg_free(msg_t *msg){
+	free((void *)msg->topic);
+	if (msg->type == MSG_BUF_TYPE || msg->type == MSG_STR_TYPE) {
+		free((void *)msg->buf);
+	}
+	free(msg);
+}
+
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 	topic_map_t *tm;
 	handle_list_t *hl;

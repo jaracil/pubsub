@@ -46,6 +46,9 @@ int pubsub_unsubscribe_all(void *ctx);
 size_t pubsub_publish(const msg_t *msg);
 size_t pubsub_count(const char *topic);
 
+msg_t *pubsub_msg_clone(const msg_t* msg);
+void pubsub_msg_free(msg_t *msg);
+
 //Helper functions
 size_t pubsub_publish_int(const char *topic, int64_t val);
 size_t pubsub_publish_dbl(const char *topic, double val);
