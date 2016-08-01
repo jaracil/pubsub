@@ -32,7 +32,10 @@ typedef struct {
 		void *ptr_val;
 		size_t buf_sz;
 	};
-	void  *buf;
+	union {
+		void  *buf;
+		char  *str;
+	};
 } msg_t;
 
 typedef void (*msg_callback_t)(void *c, const msg_t *m);
