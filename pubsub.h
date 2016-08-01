@@ -24,7 +24,7 @@ enum msg_types {
 };
 
 typedef struct {
-	char *topic;			// Message topic
+	const char *topic;			// Message topic
 	enum msg_types type;	// Message type
 	union {
 		double dbl_val;
@@ -33,8 +33,8 @@ typedef struct {
 		size_t buf_sz;
 	};
 	union {
-		void  *buf;
-		char  *str;
+		const void  *buf;
+		const char  *str;
 	};
 } msg_t;
 
@@ -47,10 +47,10 @@ size_t pubsub_publish(const msg_t *msg);
 size_t pubsub_count(const char *topic);
 
 //Helper functions
-size_t pubsub_publish_int(char *topic, int64_t val);
-size_t pubsub_publish_dbl(char *topic, double val);
-size_t pubsub_publish_ptr(char *topic, void *val);
-size_t pubsub_publish_str(char *topic, char *val);
-size_t pubsub_publish_buf(char *topic, void *val, size_t sz);
+size_t pubsub_publish_int(const char *topic, int64_t val);
+size_t pubsub_publish_dbl(const char *topic, double val);
+size_t pubsub_publish_ptr(const char *topic, void *val);
+size_t pubsub_publish_str(const char *topic, const char *val);
+size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz);
 
 #endif /* PUBSUB_H_ */

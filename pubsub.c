@@ -112,22 +112,22 @@ size_t pubsub_publish(const msg_t *msg){
 	return ret;
 }
 
-size_t pubsub_publish_int(char *topic, int64_t val){
+size_t pubsub_publish_int(const char *topic, int64_t val){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val}));
 }
 
-size_t pubsub_publish_dbl(char *topic, double val){
+size_t pubsub_publish_dbl(const char *topic, double val){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_DBL_TYPE, .dbl_val=val}));
 }
 
-size_t pubsub_publish_ptr(char *topic, void *val){
+size_t pubsub_publish_ptr(const char *topic, void *val){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_PTR_TYPE, .ptr_val=val}));
 }
 
-size_t pubsub_publish_str(char *topic, char *val){
+size_t pubsub_publish_str(const char *topic, const char *val){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_STR_TYPE, .buf=val }));
 }
 
-size_t pubsub_publish_buf(char *topic, void *val, size_t sz){
+size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val }));
 }
