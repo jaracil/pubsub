@@ -43,7 +43,7 @@ typedef void (*msg_callback_t)(void *c, const msg_t *m);
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb);
 int pubsub_unsubscribe(const char *topic, void *ctx);
 int pubsub_unsubscribe_all(void *ctx);
-size_t pubsub_publish(const msg_t *msg);
+size_t pubsub_publish(const msg_t *msg, int defer);
 size_t pubsub_count(const char *topic);
 
 msg_t *pubsub_msg_clone(const msg_t* msg);
@@ -55,5 +55,12 @@ size_t pubsub_publish_dbl(const char *topic, double val);
 size_t pubsub_publish_ptr(const char *topic, void *val);
 size_t pubsub_publish_str(const char *topic, const char *val);
 size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz);
+size_t pubsub_publish_int_def(const char *topic, int64_t val);
+size_t pubsub_publish_dbl_def(const char *topic, double val);
+size_t pubsub_publish_ptr_def(const char *topic, void *val);
+size_t pubsub_publish_str_def(const char *topic, const char *val);
+size_t pubsub_publish_buf_def(const char *topic, const void *val, size_t sz);
+
+
 
 #endif /* PUBSUB_H_ */
