@@ -143,13 +143,11 @@ size_t pubsub_count(const char *topic){
 }
 
 size_t pubsub_publish(const msg_t *msg, int defer){
-	static int rec = 0;
 	topic_map_t *tm;
 	handle_list_t *hl, *tmp_hl;
 	defer_list_t *dl;
 	size_t ret = 0;
 
-	rec ++;
 	if (defer) {
 		dl = calloc(1, sizeof(*dl));
 		dl->msg = pubsub_msg_clone(msg);
@@ -157,7 +155,7 @@ size_t pubsub_publish(const msg_t *msg, int defer){
 	} else {
 		HASH_FIND_STR(Topics, msg->topic, tm);
 		if (tm==NULL){
-			goto ex;
+			return ret;
 		}
 		DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
 			if (hl->cb != NULL){
@@ -166,19 +164,20 @@ size_t pubsub_publish(const msg_t *msg, int defer){
 			}
 		}
 	}
-ex:
-	if (rec == 1) {
-		while (Defers != NULL) {
-			dl = Defers;
-			pubsub_publish(dl->msg, 0);
-			DL_DELETE(Defers, dl);
-			pubsub_msg_free(dl->msg);
-			free(dl);
-		}
-	}
-	rec --;
 	return ret;
 }
+
+void pubsub_deferred(){
+	defer_list_t *dl;
+	while (Defers != NULL) {
+		dl = Defers;
+		pubsub_publish(dl->msg, 0);
+		DL_DELETE(Defers, dl);
+		pubsub_msg_free(dl->msg);
+		free(dl);
+	}
+}
+
 
 size_t pubsub_publish_int(const char *topic, int64_t val){
 	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val}), 0);
