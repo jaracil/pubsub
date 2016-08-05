@@ -74,8 +74,20 @@ void pubsub_msg_free(msg_t *msg){
 }
 
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
-	topic_map_t *tm;
+	topic_map_t *tm, *tm_tmp;
 	handle_list_t *hl;
+	int count = 0;
+	size_t topic_len = strlen(topic);
+
+	if (topic[topic_len - 1] == '*'){
+		HASH_ITER(hh, Topics, tm, tm_tmp){
+			if (topic_len - 1 <= strlen(tm->topic) && strncmp(tm->topic, topic, topic_len - 1) == 0){
+				count += pubsub_subscribe(tm->topic, ctx, cb);
+			}
+
+		}
+		return count;
+	}
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
@@ -85,26 +97,37 @@ int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 	}
 	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl != NULL) {
-		return -1;
+		return 0;
 	}
 	hl = calloc(1, sizeof(*hl));
 	hl->cb = cb;
 	hl->ctx = ctx;
 	DL_APPEND(tm->handles, hl);
-	return 0;
+	return 1;
 }
 
 int pubsub_unsubscribe(const char *topic, void *ctx){
-	topic_map_t *tm;
+	topic_map_t *tm, *tm_tmp;
 	handle_list_t *hl;
+	int count = 0;
+	size_t topic_len = strlen(topic);
 
+	if (topic[topic_len - 1] == '*'){
+		HASH_ITER(hh, Topics, tm, tm_tmp){
+			if (topic_len - 1 <= strlen(tm->topic) && strncmp(tm->topic, topic, topic_len - 1) == 0){
+				count += pubsub_unsubscribe(tm->topic, ctx);
+			}
+
+		}
+		return count;
+	}
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
-		return -1;
+		return 0;
 	}
 	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl == NULL) {
-		return -1;
+		return 0;
 	}
 	DL_DELETE(tm->handles, hl);
 	free(hl);
@@ -112,19 +135,7 @@ int pubsub_unsubscribe(const char *topic, void *ctx){
 		HASH_DEL(Topics, tm);
 		free(tm);
 	}
-	return 0;
-}
-
-int pubsub_unsubscribe_all(void *ctx){
-	topic_map_t *tm, *tmp_tm;
-	int ret = 0;
-
-	HASH_ITER(hh, Topics, tm, tmp_tm){
-		if (pubsub_unsubscribe(tm->topic, ctx) == 0) {
-			ret ++;
-		}
-	}
-	return ret;
+	return 1;
 }
 
 size_t pubsub_count(const char *topic){

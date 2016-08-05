@@ -42,7 +42,6 @@ typedef void (*msg_callback_t)(void *c, const msg_t *m);
 
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb);
 int pubsub_unsubscribe(const char *topic, void *ctx);
-int pubsub_unsubscribe_all(void *ctx);
 size_t pubsub_publish(const msg_t *msg, int defer);
 size_t pubsub_count(const char *topic);
 void pubsub_deferred();
