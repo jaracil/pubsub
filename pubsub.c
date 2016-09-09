@@ -81,7 +81,7 @@ int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 
 	if (topic[topic_len - 1] == '*'){
 		HASH_ITER(hh, Topics, tm, tm_tmp){
-			if (topic_len - 1 <= strlen(tm->topic) && strncmp(tm->topic, topic, topic_len - 1) == 0){
+			if (strncmp(tm->topic, topic, topic_len - 1) == 0){
 				count += pubsub_subscribe(tm->topic, ctx, cb);
 			}
 
@@ -114,7 +114,7 @@ int pubsub_unsubscribe(const char *topic, void *ctx){
 
 	if (topic[topic_len - 1] == '*'){
 		HASH_ITER(hh, Topics, tm, tm_tmp){
-			if (topic_len - 1 <= strlen(tm->topic) && strncmp(tm->topic, topic, topic_len - 1) == 0){
+			if (strncmp(tm->topic, topic, topic_len - 1) == 0){
 				count += pubsub_unsubscribe(tm->topic, ctx);
 			}
 
