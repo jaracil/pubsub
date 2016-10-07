@@ -189,37 +189,51 @@ void pubsub_deferred(){
 	}
 }
 
-
 size_t pubsub_publish_int(const char *topic, int64_t val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val}), 0);
+	char topic_buf[PUBSUB_TOPIC_SIZE];
+	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
+	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_INT_TYPE, .int_val=val, .str = ""}), 0);
 }
 
 size_t pubsub_publish_dbl(const char *topic, double val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_DBL_TYPE, .dbl_val=val}), 0);
+	char topic_buf[PUBSUB_TOPIC_SIZE];
+	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
+	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}), 0);
 }
 
 size_t pubsub_publish_ptr(const char *topic, void *val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_PTR_TYPE, .ptr_val=val}), 0);
+	char topic_buf[PUBSUB_TOPIC_SIZE];
+	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
+	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}), 0);
 }
 
 size_t pubsub_publish_str(const char *topic, const char *val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_STR_TYPE, .buf=val }), 0);
+	char topic_buf[PUBSUB_TOPIC_SIZE];
+	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
+	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_STR_TYPE, .str=val}), 0);
 }
 
 size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val }), 0);
+	char topic_buf[PUBSUB_TOPIC_SIZE];
+	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
+	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}), 0);
 }
 
 size_t pubsub_publish_int_def(const char *topic, int64_t val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val}), 1);
+	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val, .str = ""}), 1);
 }
 
 size_t pubsub_publish_dbl_def(const char *topic, double val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_DBL_TYPE, .dbl_val=val}), 1);
+	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}), 1);
 }
 
 size_t pubsub_publish_ptr_def(const char *topic, void *val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_PTR_TYPE, .ptr_val=val}), 1);
+	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}), 1);
 }
 
 size_t pubsub_publish_str_def(const char *topic, const char *val){

@@ -24,7 +24,7 @@ enum msg_types {
 };
 
 typedef struct {
-	const char *topic;			// Message topic
+	const char *topic;		// Message topic
 	enum msg_types type;	// Message type
 	union {
 		double dbl_val;
