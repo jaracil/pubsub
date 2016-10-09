@@ -21,38 +21,43 @@ void msg_cb_ctx2(void *ctx, const msg_t *msg){
 
 void msg_cb1(void *ctx, const msg_t *msg){
 	(*(int*)(ctx))++;
-	assert(strcmp(msg->buf,"sota") == 0);
+	assert(strcmp(msg->str,"sota") == 0);
 }
 
 void msg_cb2(void *ctx, const msg_t *msg){
 	(*(int*)(ctx))++;
-	assert(strcmp(msg->buf,"caballo") == 0);
+	assert(strcmp(msg->str,"caballo") == 0);
 	}
 
 void msg_cb3(void *ctx, const msg_t *msg){
 	(*(int*)(ctx))++;
-	assert(strcmp(msg->buf,"rey") == 0);
+	assert(strcmp(msg->str,"rey") == 0);
 }
 
 void pubsub_test(){
-	assert(pubsub_subscribe("a.1", &ctx, &msg_cb1) == 1 );
-	assert(pubsub_subscribe("a.2", &ctx, &msg_cb2) == 1);
-	assert(pubsub_subscribe("a.3", &ctx, &msg_cb3) == 1);
-	assert(pubsub_subscribe("a.3", &ctx, &msg_cb3) ==	0); // Already registered, must return 0 subscriptions
+	assert(pubsub_subscribe("a.b.1", &ctx, &msg_cb1) == 0);
+	assert(pubsub_subscribe("a.b.2", &ctx, &msg_cb2) == 0);
+	assert(pubsub_subscribe("a.b.3", &ctx, &msg_cb3) == 0);
+	assert(pubsub_subscribe("a.b.3", &ctx, &msg_cb3) ==	-1); // Already registered, must return -1
 
-	assert(pubsub_subscribe("a.*", &ctx2, msg_cb_ctx2) == 3); // 3 subscriptions
+	assert(pubsub_subscribe("a.*", &ctx2, msg_cb_ctx2) == 0);
 
-	assert(pubsub_publish_str("a.1", "sota") == 2);
-	assert(pubsub_publish_str("a.2", "caballo") == 2);
-	assert(pubsub_publish_str("a.3", "rey") == 2);
-	assert(pubsub_publish_str("a.4", "comodin") == 0); // Nobody registered at a.4, 0 subscribers reached.
+	assert(pubsub_publish_str("a.b.1!", "sota") == 2);
+	assert(pubsub_publish_str("a.b.2!", "caballo") == 2);
+	assert(pubsub_publish_str("a.b.3!", "rey") == 2);
+	assert(pubsub_publish_str("a.b.3", "rey") == 0); // Deferred
+	assert(pubsub_publish_str("a.b.4!", "comodin") == 1);
+	assert(pubsub_publish_str("a.b.4~!", "comodin") == 0);
 
 	assert(ctx == 3);
-	assert(ctx2 == 3);
+	assert(ctx2 == 4);
+	pubsub_deferred();
+	assert(ctx == 4);
+	assert(ctx2 == 5);
 
-	assert(pubsub_unsubscribe("*", &ctx) == 3); // 3 unsubscribed
-	assert(pubsub_unsubscribe("*", &ctx2) == 3); // 3 unsubscribed
-	assert(pubsub_unsubscribe("*", &ctx2) == 0); // Nobody topics unsubscribed
+	assert(pubsub_unsubscribe("a.b.1", &ctx) == 0);
+	assert(pubsub_unsubscribe_all(&ctx) == 2);
+	assert(pubsub_unsubscribe_all(&ctx2) == 1);
 }
 
 int main(int argc, char* argv[]){

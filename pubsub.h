@@ -8,6 +8,8 @@
 #ifndef PUBSUB_H_
 #define PUBSUB_H_
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include "uthash.h"
 
@@ -23,9 +25,15 @@ enum msg_types {
 	MSG_BUF_TYPE,
 };
 
+enum msg_flags {
+	MSG_FL_INSTANT = 1 << 0,
+	MSG_FL_NONRECURSIVE = 1 << 1,
+};
+
 typedef struct {
-	const char *topic;		// Message topic
+	char *topic;			// Message topic
 	enum msg_types type;	// Message type
+	uint32_t flags;
 	union {
 		double dbl_val;
 		int64_t int_val;
@@ -42,7 +50,8 @@ typedef void (*msg_callback_t)(void *c, const msg_t *m);
 
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb);
 int pubsub_unsubscribe(const char *topic, void *ctx);
-size_t pubsub_publish(const msg_t *msg, int defer);
+int pubsub_unsubscribe_all(void *ctx);
+size_t pubsub_publish(msg_t *msg);
 size_t pubsub_count(const char *topic);
 void pubsub_deferred();
 
@@ -55,12 +64,5 @@ size_t pubsub_publish_dbl(const char *topic, double val);
 size_t pubsub_publish_ptr(const char *topic, void *val);
 size_t pubsub_publish_str(const char *topic, const char *val);
 size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz);
-size_t pubsub_publish_int_def(const char *topic, int64_t val);
-size_t pubsub_publish_dbl_def(const char *topic, double val);
-size_t pubsub_publish_ptr_def(const char *topic, void *val);
-size_t pubsub_publish_str_def(const char *topic, const char *val);
-size_t pubsub_publish_buf_def(const char *topic, const void *val, size_t sz);
-
-
 
 #endif /* PUBSUB_H_ */

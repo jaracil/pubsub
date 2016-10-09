@@ -6,11 +6,13 @@
  */
 
 #include <string.h>
+#include <stdbool.h>
 
 #include "uthash.h"
 #include "utlist.h"
 #include "pubsub.h"
 
+#include <stdio.h>
 typedef struct defer_list_s {
 	msg_t *msg;
 	struct defer_list_s *next;
@@ -74,20 +76,8 @@ void pubsub_msg_free(msg_t *msg){
 }
 
 int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
-	topic_map_t *tm, *tm_tmp;
+	topic_map_t *tm;
 	handle_list_t *hl;
-	int count = 0;
-	size_t topic_len = strlen(topic);
-
-	if (topic[topic_len - 1] == '*'){
-		HASH_ITER(hh, Topics, tm, tm_tmp){
-			if (strncmp(tm->topic, topic, topic_len - 1) == 0){
-				count += pubsub_subscribe(tm->topic, ctx, cb);
-			}
-
-		}
-		return count;
-	}
 
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
@@ -97,37 +87,36 @@ int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 	}
 	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl != NULL) {
-		return 0;
+		return -1;
 	}
 	hl = calloc(1, sizeof(*hl));
 	hl->cb = cb;
 	hl->ctx = ctx;
 	DL_APPEND(tm->handles, hl);
-	return 1;
+	return 0;
+}
+
+int pubsub_unsubscribe_all(void *ctx){
+	topic_map_t *tm, *tm_tmp;
+	int count = 0;
+
+	HASH_ITER(hh, Topics, tm, tm_tmp){
+		if (pubsub_unsubscribe(tm->topic, ctx) == 0) count ++;
+	}
+	return count;
 }
 
 int pubsub_unsubscribe(const char *topic, void *ctx){
-	topic_map_t *tm, *tm_tmp;
+	topic_map_t *tm;
 	handle_list_t *hl;
-	int count = 0;
-	size_t topic_len = strlen(topic);
 
-	if (topic[topic_len - 1] == '*'){
-		HASH_ITER(hh, Topics, tm, tm_tmp){
-			if (strncmp(tm->topic, topic, topic_len - 1) == 0){
-				count += pubsub_unsubscribe(tm->topic, ctx);
-			}
-
-		}
-		return count;
-	}
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
-		return 0;
+		return -1;
 	}
 	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl == NULL) {
-		return 0;
+		return -1;
 	}
 	DL_DELETE(tm->handles, hl);
 	free(hl);
@@ -135,7 +124,7 @@ int pubsub_unsubscribe(const char *topic, void *ctx){
 		HASH_DEL(Topics, tm);
 		free(tm);
 	}
-	return 1;
+	return 0;
 }
 
 size_t pubsub_count(const char *topic){
@@ -153,27 +142,61 @@ size_t pubsub_count(const char *topic){
 	return ret;
 }
 
-size_t pubsub_publish(const msg_t *msg, int defer){
+static size_t publish(const msg_t *msg) {
 	topic_map_t *tm;
 	handle_list_t *hl, *tmp_hl;
-	defer_list_t *dl;
 	size_t ret = 0;
-
-	if (defer) {
-		dl = calloc(1, sizeof(*dl));
-		dl->msg = pubsub_msg_clone(msg);
-		DL_APPEND(Defers, dl);
-	} else {
-		HASH_FIND_STR(Topics, msg->topic, tm);
-		if (tm==NULL){
-			return ret;
-		}
+	HASH_FIND_STR(Topics, msg->topic, tm);
+	if (tm != NULL){
 		DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
 			if (hl->cb != NULL){
 				hl->cb(hl->ctx, msg);
 				ret++;
 			}
 		}
+	}
+	if(!(msg->flags & MSG_FL_NONRECURSIVE)) { // Recursive
+		char topic[PUBSUB_TOPIC_SIZE];
+		strncpy(topic, msg->topic, PUBSUB_TOPIC_SIZE);
+		int last = (int) strlen(topic) - 1;
+		while(last >= 0){
+			while(last >= 0){
+				if (topic[last] == '.'){
+					topic[last + 1] = '*';
+					topic[last + 2] = '\0';
+					last --;
+					break;
+				}
+				last --;
+			}
+			if(last < 0){
+				topic[0] = '*';
+				topic[1] = '\0';
+			}
+			HASH_FIND_STR(Topics, topic, tm);
+			if (tm != NULL){
+				DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
+					if (hl->cb != NULL){
+						hl->cb(hl->ctx, msg);
+						ret++;
+					}
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+size_t pubsub_publish(msg_t *msg){
+	defer_list_t *dl;
+	size_t ret = 0;
+
+	if (msg->flags & MSG_FL_INSTANT) {
+		ret = publish(msg);
+	} else {
+		dl = calloc(1, sizeof(*dl));
+		dl->msg = pubsub_msg_clone(msg);
+		DL_APPEND(Defers, dl);
 	}
 	return ret;
 }
@@ -182,65 +205,59 @@ void pubsub_deferred(){
 	defer_list_t *dl;
 	while (Defers != NULL) {
 		dl = Defers;
-		pubsub_publish(dl->msg, 0);
+		publish(dl->msg);
 		DL_DELETE(Defers, dl);
 		pubsub_msg_free(dl->msg);
 		free(dl);
 	}
 }
 
+static uint32_t parse_flags(char *topic){
+	int32_t flags = 0;
+
+	for (int last = strlen(topic) - 1; last >= 0; last --){
+		if (topic[last] == '!'){
+			flags |= MSG_FL_INSTANT;
+		} else if (topic[last] == '~'){
+			flags |= MSG_FL_NONRECURSIVE;
+		} else break;
+		topic[last] = '\0';
+	}
+	return flags;
+}
+
 size_t pubsub_publish_int(const char *topic, int64_t val){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_INT_TYPE, .int_val=val, .str = ""}), 0);
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_INT_TYPE, .int_val=val, .str = ""}));
 }
 
 size_t pubsub_publish_dbl(const char *topic, double val){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}), 0);
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}));
 }
 
 size_t pubsub_publish_ptr(const char *topic, void *val){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}), 0);
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}));
 }
 
 size_t pubsub_publish_str(const char *topic, const char *val){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_STR_TYPE, .str=val}), 0);
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_STR_TYPE, .str=val}));
 }
 
 size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}), 0);
-}
-
-size_t pubsub_publish_int_def(const char *topic, int64_t val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_INT_TYPE, .int_val=val, .str = ""}), 1);
-}
-
-size_t pubsub_publish_dbl_def(const char *topic, double val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}), 1);
-}
-
-size_t pubsub_publish_ptr_def(const char *topic, void *val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}), 1);
-}
-
-size_t pubsub_publish_str_def(const char *topic, const char *val){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_STR_TYPE, .buf=val }), 1);
-}
-
-size_t pubsub_publish_buf_def(const char *topic, const void *val, size_t sz){
-	return pubsub_publish(&((msg_t){.topic=topic, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val }), 1);
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}));
 }
 
