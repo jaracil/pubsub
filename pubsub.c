@@ -212,52 +212,38 @@ void pubsub_deferred(){
 	}
 }
 
-static uint32_t parse_flags(char *topic){
-	int32_t flags = 0;
-
-	for (int last = strlen(topic) - 1; last >= 0; last --){
-		if (topic[last] == '!'){
-			flags |= MSG_FL_INSTANT;
-		} else if (topic[last] == '~'){
-			flags |= MSG_FL_NONRECURSIVE;
-		} else break;
-		topic[last] = '\0';
-	}
-	return flags;
-}
-
-size_t pubsub_publish_int(const char *topic, int64_t val){
+size_t pubsub_publish_int(const char *topic, int64_t val, uint32_t flags){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_INT_TYPE, .int_val=val, .str = ""}));
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_INT_TYPE, .int_val=val, .str = ""}));
 }
 
-size_t pubsub_publish_dbl(const char *topic, double val){
+size_t pubsub_publish_dbl(const char *topic, double val, uint32_t flags){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}));
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}));
 }
 
-size_t pubsub_publish_ptr(const char *topic, void *val){
+size_t pubsub_publish_ptr(const char *topic, void *val, uint32_t flags){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}));
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}));
 }
 
-size_t pubsub_publish_str(const char *topic, const char *val){
+size_t pubsub_publish_str(const char *topic, const char *val, uint32_t flags){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_STR_TYPE, .str=val}));
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_STR_TYPE, .str=val}));
 }
 
-size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz){
+size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz, uint32_t flags){
 	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = parse_flags(topic_buf), .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}));
+	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}));
 }
 

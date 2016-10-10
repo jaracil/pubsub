@@ -59,10 +59,10 @@ msg_t *pubsub_msg_clone(const msg_t* msg);
 void pubsub_msg_free(msg_t *msg);
 
 //Helper functions
-size_t pubsub_publish_int(const char *topic, int64_t val);
-size_t pubsub_publish_dbl(const char *topic, double val);
-size_t pubsub_publish_ptr(const char *topic, void *val);
-size_t pubsub_publish_str(const char *topic, const char *val);
-size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz);
+size_t pubsub_publish_int(const char *topic, int64_t val, uint32_t flags);
+size_t pubsub_publish_dbl(const char *topic, double val, uint32_t flags);
+size_t pubsub_publish_ptr(const char *topic, void *val, uint32_t flags);
+size_t pubsub_publish_str(const char *topic, const char *val, uint32_t flags);
+size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz, uint32_t flags);
 
 #endif /* PUBSUB_H_ */

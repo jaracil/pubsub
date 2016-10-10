@@ -42,12 +42,12 @@ void pubsub_test(){
 
 	assert(pubsub_subscribe("a.*", &ctx2, msg_cb_ctx2) == 0);
 
-	assert(pubsub_publish_str("a.b.1!", "sota") == 2);
-	assert(pubsub_publish_str("a.b.2!", "caballo") == 2);
-	assert(pubsub_publish_str("a.b.3!", "rey") == 2);
-	assert(pubsub_publish_str("a.b.3", "rey") == 0); // Deferred
-	assert(pubsub_publish_str("a.b.4!", "comodin") == 1);
-	assert(pubsub_publish_str("a.b.4~!", "comodin") == 0);
+	assert(pubsub_publish_str("a.b.1", "sota", MSG_FL_INSTANT) == 2);
+	assert(pubsub_publish_str("a.b.2", "caballo", MSG_FL_INSTANT) == 2);
+	assert(pubsub_publish_str("a.b.3", "rey", MSG_FL_INSTANT) == 2);
+	assert(pubsub_publish_str("a.b.3", "rey", 0) == 0); // Deferred
+	assert(pubsub_publish_str("a.b.4!", "comodin", MSG_FL_INSTANT) == 1);
+	assert(pubsub_publish_str("a.b.4~!", "comodin", MSG_FL_INSTANT | MSG_FL_NONRECURSIVE) == 0);
 
 	assert(ctx == 3);
 	assert(ctx2 == 4);
