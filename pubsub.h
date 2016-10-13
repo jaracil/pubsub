@@ -75,5 +75,6 @@ void pubsub_msg_free(msg_t *msg);
 #define pubsub_is_ptr(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_PTR_TYPE)
 #define pubsub_is_str(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_STR_TYPE)
 #define pubsub_is_buf(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_BUF_TYPE)
+#define pubsub_type(msg) ((msg)->flags & MSG_MSK_TYPE))
 
 #endif /* PUBSUB_H_ */
