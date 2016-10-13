@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include "uthash.h"
 #include "utlist.h"
@@ -45,8 +46,11 @@ msg_t *pubsub_msg_clone(const msg_t* msg){
 
 	m = calloc(1, sizeof(*m));
 	m->topic = _strdup(msg->topic);
-	m->type = msg->type;
-	switch (m->type){
+	m->flags = msg->flags;
+	if(msg->rtopic != NULL){
+		m->rtopic = _strdup(msg->rtopic);
+	}
+	switch (m->flags & MSG_MSK_TYPE){
 	case MSG_INT_TYPE:
 		m->int_val = msg->int_val;
 		break;
@@ -68,9 +72,12 @@ msg_t *pubsub_msg_clone(const msg_t* msg){
 }
 
 void pubsub_msg_free(msg_t *msg){
-	free((void *)msg->topic);
-	if (msg->type == MSG_BUF_TYPE || msg->type == MSG_STR_TYPE) {
-		free((void *)msg->buf);
+	free(msg->topic);
+	if (msg->rtopic != NULL){
+		free(msg->rtopic);
+	}
+	if ((msg->flags & MSG_MSK_TYPE) == MSG_BUF_TYPE || (msg->flags & MSG_MSK_TYPE) == MSG_STR_TYPE) {
+		free(msg->buf);
 	}
 	free(msg);
 }
@@ -187,10 +194,9 @@ static size_t publish(const msg_t *msg) {
 	return ret;
 }
 
-size_t pubsub_publish(msg_t *msg){
+size_t pubsub_pub_msg(msg_t *msg){
 	defer_list_t *dl;
 	size_t ret = 0;
-
 	if (msg->flags & MSG_FL_INSTANT) {
 		ret = publish(msg);
 	} else {
@@ -212,38 +218,42 @@ void pubsub_deferred(){
 	}
 }
 
-size_t pubsub_publish_int(const char *topic, int64_t val, uint32_t flags){
+size_t pubsub_pub(const char *topic, uint32_t flags, ...){
+	msg_t msg = {0};
 	char topic_buf[PUBSUB_TOPIC_SIZE];
-	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
-	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_INT_TYPE, .int_val=val, .str = ""}));
-}
+	char rtopic_buf[PUBSUB_TOPIC_SIZE];
+	va_list vl;
 
-size_t pubsub_publish_dbl(const char *topic, double val, uint32_t flags){
-	char topic_buf[PUBSUB_TOPIC_SIZE];
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_DBL_TYPE, .dbl_val=val, .str = ""}));
-}
-
-size_t pubsub_publish_ptr(const char *topic, void *val, uint32_t flags){
-	char topic_buf[PUBSUB_TOPIC_SIZE];
-	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
-	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_PTR_TYPE, .ptr_val=val, .str = ""}));
-}
-
-size_t pubsub_publish_str(const char *topic, const char *val, uint32_t flags){
-	char topic_buf[PUBSUB_TOPIC_SIZE];
-	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
-	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_STR_TYPE, .str=val}));
-}
-
-size_t pubsub_publish_buf(const char *topic, const void *val, size_t sz, uint32_t flags){
-	char topic_buf[PUBSUB_TOPIC_SIZE];
-	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
-	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	return pubsub_publish(&((msg_t){.topic=topic_buf, .flags = flags, .type=MSG_BUF_TYPE, .buf_sz=sz, .buf=val}));
+	msg.topic = topic_buf;
+	msg.str = "";
+	msg.flags = flags;
+	va_start(vl, flags);
+	switch (msg.flags & MSG_MSK_TYPE){
+	case MSG_INT_TYPE:
+		msg.int_val = va_arg(vl, int);
+		break;
+	case MSG_DBL_TYPE:
+		msg.dbl_val = va_arg(vl, double);
+		break;
+	case MSG_PTR_TYPE:
+		msg.ptr_val = va_arg(vl, void *);
+		break;
+	case MSG_STR_TYPE:
+		msg.str = va_arg(vl, char *);
+		break;
+	case MSG_BUF_TYPE:
+		msg.buf = va_arg(vl, void *);
+		msg.buf_sz = va_arg(vl, size_t);
+		break;
+	}
+	if (flags & MSG_FL_RESPONSE) {
+		strncpy(rtopic_buf, va_arg(vl, char *), PUBSUB_TOPIC_SIZE);
+		rtopic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
+		msg.rtopic = rtopic_buf;
+	}
+	va_end(vl);
+	return pubsub_pub_msg(&msg);
 }
 
