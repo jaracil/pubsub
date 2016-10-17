@@ -224,6 +224,7 @@ size_t pubsub_pub(const char *topic, uint32_t flags, ...){
 	char rtopic_buf[PUBSUB_TOPIC_SIZE];
 	va_list vl;
 
+	if (topic == NULL) return 0;
 	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
 	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
 	msg.topic = topic_buf;

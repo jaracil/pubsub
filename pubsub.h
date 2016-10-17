@@ -70,6 +70,12 @@ void pubsub_msg_free(msg_t *msg);
 #define pubsub_publish_str_r(topic, rtopic, val, flags) pubsub_pub(topic, MSG_STR_TYPE | MSG_FL_RESPONSE | (flags), (char *)(val), (char *)(rtopic))
 #define pubsub_publish_buf_r(topic, rtopic, val, size, flags) pubsub_pub(topic, MSG_BUF_TYPE | MSG_FL_RESPONSE | (flags), (void *)(val), (size_t) size, (char *)(rtopic))
 
+#define pubsub_respond_int(msg, val, flags) pubsub_pub((msg)->rtopic, MSG_INT_TYPE | (flags), (int)(val))
+#define pubsub_respond_dbl(msg, val, flags) pubsub_pub((msg)->rtopic, MSG_DBL_TYPE | (flags), (double)(val))
+#define pubsub_respond_ptr(msg, val, flags) pubsub_pub((msg)->rtopic, MSG_PTR_TYPE | (flags), (void *)(val))
+#define pubsub_respond_str(msg, val, flags) pubsub_pub((msg)->rtopic, MSG_STR_TYPE | (flags), (char *)(val))
+#define pubsub_respond_buf(msg, val, size, flags) pubsub_pub((msg)->rtopic, MSG_BUF_TYPE | (flags), (void *)(val), (size_t) size)
+
 #define pubsub_is_int(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_INT_TYPE)
 #define pubsub_is_dbl(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_DBL_TYPE)
 #define pubsub_is_ptr(msg) (((msg)->flags & MSG_MSK_TYPE) == MSG_PTR_TYPE)
