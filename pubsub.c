@@ -220,14 +220,10 @@ void pubsub_deferred(){
 
 size_t pubsub_pub(const char *topic, uint32_t flags, ...){
 	msg_t msg = {0};
-	char topic_buf[PUBSUB_TOPIC_SIZE];
-	char rtopic_buf[PUBSUB_TOPIC_SIZE];
 	va_list vl;
 
 	if (topic == NULL) return 0;
-	strncpy(topic_buf, topic, PUBSUB_TOPIC_SIZE);
-	topic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-	msg.topic = topic_buf;
+	msg.topic = (char *)topic;
 	msg.str = "";
 	msg.flags = flags;
 	va_start(vl, flags);
@@ -250,9 +246,7 @@ size_t pubsub_pub(const char *topic, uint32_t flags, ...){
 		break;
 	}
 	if (flags & MSG_FL_RESPONSE) {
-		strncpy(rtopic_buf, va_arg(vl, char *), PUBSUB_TOPIC_SIZE);
-		rtopic_buf[PUBSUB_TOPIC_SIZE - 1] = '\0';
-		msg.rtopic = rtopic_buf;
+		msg.rtopic = va_arg(vl, char *);
 	}
 	va_end(vl);
 	return pubsub_pub_msg(&msg);
