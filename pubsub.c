@@ -28,8 +28,10 @@ typedef struct handle_list_s {
 } handle_list_t;
 
 typedef struct topic_map_s {
-	char topic[PUBSUB_TOPIC_SIZE];
+	char *topic;
 	handle_list_t *handles;
+	int busy_cnt;
+	bool dirty;
 	UT_hash_handle hh;
 } topic_map_t;
 
@@ -89,8 +91,8 @@ int pubsub_subscribe(const char *topic, void *ctx, msg_callback_t cb){
 	HASH_FIND_STR(Topics, topic, tm);
 	if (tm==NULL){
 		tm = calloc(1, sizeof(*tm));
-		strncpy(tm->topic, topic, PUBSUB_TOPIC_SIZE - 1);
-		HASH_ADD_STR( Topics, topic, tm );
+		tm->topic = _strdup(topic);
+		HASH_ADD_KEYPTR(hh, Topics, tm->topic, strlen(tm->topic), tm);
 	}
 	DL_SEARCH_SCALAR(tm->handles, hl, ctx, ctx);
 	if (hl != NULL) {
@@ -125,11 +127,18 @@ int pubsub_unsubscribe(const char *topic, void *ctx){
 	if (hl == NULL) {
 		return -1;
 	}
-	DL_DELETE(tm->handles, hl);
-	free(hl);
-	if (tm->handles == NULL) { //Empty list
-		HASH_DEL(Topics, tm);
-		free(tm);
+	if (tm->busy_cnt == 0) {
+		DL_DELETE(tm->handles, hl);
+		free(hl);
+		if (tm->handles == NULL) { //Empty list
+			HASH_DEL(Topics, tm);
+			free(tm->topic);
+			free(tm);
+		}
+	} else {
+		tm->dirty = true;
+		hl->ctx = NULL;
+		hl->cb = NULL;
 	}
 	return 0;
 }
@@ -162,9 +171,9 @@ static size_t publish(const msg_t *msg) {
 			}
 		}
 	}
-	if(!(msg->flags & MSG_FL_NONRECURSIVE)) { // Recursive
-		char topic[PUBSUB_TOPIC_SIZE];
-		strncpy(topic, msg->topic, PUBSUB_TOPIC_SIZE);
+	if (!(msg->flags & MSG_FL_NONRECURSIVE)) { // Recursive
+		char topic[strlen(msg->topic) + 1];
+		strcpy(topic, msg->topic);
 		int last = (int) strlen(topic) - 1;
 		while(last >= 0){
 			while(last >= 0){
@@ -176,16 +185,32 @@ static size_t publish(const msg_t *msg) {
 				}
 				last --;
 			}
-			if(last < 0){
+			if(last < 0) {
 				topic[0] = '*';
 				topic[1] = '\0';
 			}
 			HASH_FIND_STR(Topics, topic, tm);
 			if (tm != NULL){
+				tm->busy_cnt ++;
 				DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
 					if (hl->cb != NULL){
 						hl->cb(hl->ctx, msg);
 						ret++;
+					}
+				}
+				tm->busy_cnt --;
+				if (tm->busy_cnt == 0 && tm->dirty){
+					tm->dirty = false;
+					DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
+						if (hl->cb == NULL && hl->ctx == NULL){
+							DL_DELETE(tm->handles, hl);
+							free(hl);
+						}
+					}
+					if (tm->handles == NULL) {
+						HASH_DEL(Topics, tm);
+						free(tm->topic);
+						free(tm);
 					}
 				}
 			}

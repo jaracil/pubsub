@@ -13,10 +13,6 @@
 #include <sys/types.h>
 #include "uthash.h"
 
-#ifndef PUBSUB_TOPIC_SIZE
-#define PUBSUB_TOPIC_SIZE 32
-#endif
-
 enum msg_flags {
 	MSG_FL_INSTANT = 1 << 0,
 	MSG_FL_NONRECURSIVE = 1 << 1,
