@@ -192,7 +192,7 @@ static size_t publish(const msg_t *msg) {
 			HASH_FIND_STR(Topics, topic, tm);
 			if (tm != NULL){
 				tm->busy_cnt ++;
-				DL_FOREACH_SAFE(tm->handles, hl, tmp_hl) {
+				DL_FOREACH(tm->handles, hl) {
 					if (hl->cb != NULL){
 						hl->cb(hl->ctx, msg);
 						ret++;
